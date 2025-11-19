@@ -23,7 +23,7 @@ else:
 
 
 # model location
-sam_loc = '/Users/ganidhu/sam2'
+sam_loc = '/home/ganidhu/sam2'
 sam2_checkpoint = f'{sam_loc}/checkpoints/sam2.1_hiera_small.pt'
 model_cfg = f'configs/sam2.1/sam2.1_hiera_s.yaml'
 
@@ -65,6 +65,8 @@ def generate_segmentations(video_dir, output_dir, point):
 
     inference_state = predictor.init_state(video_path=video_dir)
 
+    print(point)
+
     ann_frame_idx = 0 # the frame where the input point is being registered
     ann_obj_id = 1 # an identifier for the 'selected' object.
     _, out_obj_ids, out_mask_logits = predictor.add_new_points_or_box(
@@ -94,6 +96,7 @@ def generate_segmentations(video_dir, output_dir, point):
 def generate_video_frames(video_path):
     name = os.path.splitext(os.path.basename(video_path))[0]
     outdir = f'tmp/{name}'
+    os.makedirs(outdir, exist_ok=True)
     subprocess.run(['ffmpeg', '-i', video_path, '-qscale:v', '2', f'{outdir}/%04d.jpg'])
 
     return outdir
@@ -104,12 +107,15 @@ def find_initial_point(waypoint_path):
         data = pickle.load(f)
 
     # access first element of 'centroids' list in pickle file.
-    centroids = data['centroids']
+    # TODO: doesn't seem to have saved rotation data in waypoint file?
+    print(len(data))
+    centroid = data[0]
 
-    return centroids[0][0] # first frame, first centroid for now.
+    return np.array(centroid) # first frame, first centroid for now.
 
 def main():
     argparser = argparse.ArgumentParser(description="SAM2 Video Segmentation Test")
+    argparser.add_argument("--sam2_path", type=str, help="Path to the installed sam2 codebase", default="/home/ganidhu/sam2")
     argparser.add_argument("--video_path", type=str, help="Path to the .mp4 video file", required=True)
     argparser.add_argument("--waypoint_path", type=str, help="Path of the generated waypoint data for video generation model", required=True)
     argparser.add_argument("--output_dir", type=str, help="Directory to save segmented frames", default="output")
@@ -118,7 +124,11 @@ def main():
 
     video_path = args.video_path
     
-    outdir = generate_video_frames(video_path)
+    vid_dir = generate_video_frames(video_path)
     point = find_initial_point(args.waypoint_path)
 
-    generate_segmentations(outdir, point)
+    os.makedirs(args.output_dir, exist_ok=True)
+    generate_segmentations(vid_dir, args.output_dir, point)
+
+if __name__ == "__main__":
+    main()
