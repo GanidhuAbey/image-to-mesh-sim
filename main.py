@@ -29,15 +29,11 @@ model_cfg = f'configs/sam2.1/sam2.1_hiera_s.yaml'
 
 predictor = build_sam2_video_predictor(model_cfg, sam2_checkpoint, device=device)
 
+# visualize generated mask for frame, the mask should be white on a black background
 def show_mask(mask, ax, obj_id=None, random_color=False):
-    if random_color:
-        color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
-    else:
-        cmap = plt.get_cmap("tab10")
-        cmap_idx = 0 if obj_id is None else obj_id
-        color = np.array([*cmap(cmap_idx)[:3], 0.6])
+    mask_color = np.array([255, 255, 255])
     h, w = mask.shape[-2:]
-    mask_image = mask.reshape(h, w, 1) * color.reshape(1, 1, -1)
+    mask_image = mask.reshape(h, w, 1) * mask_color.reshape(1, 1, -1)
     ax.imshow(mask_image)
 
 
@@ -53,7 +49,7 @@ def show_box(box, ax):
     w, h = box[2] - box[0], box[3] - box[1]
     ax.add_patch(plt.Rectangle((x0, y0), w, h, edgecolor='green', facecolor=(0, 0, 0, 0), lw=2))
 
-def generate_segmentations(video_dir, point):
+def generate_segmentations(video_dir, output_dir, point):
     # scan all the JPEG frame names in this directory
     frame_names = [
         p for p in os.listdir(video_dir)
@@ -88,6 +84,7 @@ def generate_segmentations(video_dir, point):
 
     for out_frame_idx in range(0, len(frame_names)):
         plt.figure(frameon=False)
+        plt.background('black')
         plt.axes([0., 0., 1., 1.])
         plt.axis('off')
         for out_obj_id, out_mask in video_segments[out_frame_idx].items():
